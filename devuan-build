@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -e
+
+arch='amd64'
+mirror='http://pkgmaster.devuan.org/merged'
+release='beowulf'
+
+rootfs='stage1'
+
+clean_stage1=false
+clean_stage2=false
+
+docker_stage1=dyne/devuan-stage1-${arch}:${release}
+docker_stage2=dyne/devuan-stage2-${arch}:${release}
+
+
+stage1() {
+    rm -rf ${rootfs}
+    fakeroot debootstrap --foreign --arch ${arch} ${release} ${rootfs} ${mirror}
+    pushd ${rootfs}
+    tar cf - . | sudo docker import - ${docker_stage1}
+    popd
+}
+
+stage2() {
+    sudo docker buildx build -t ${docker_stage2} \
+            --build-arg ARCH=${arch} \
+            --build-arg RELEASE=${release} \
+            --allow security.insecure \
+            - < Dockerfile.stage2
+}
+
+if ! docker image inspect ${docker_stage1} &> /dev/null || $clean_stage1;
+then
+    stage1
+fi
+
+if ! docker image inspect ${docker_stage2} &> /dev/null || $clean_stage2;
+then
+    stage2
+fi
+
+

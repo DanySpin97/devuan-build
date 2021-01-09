@@ -1,0 +1,7 @@
+ARG RELEASE
+ARG ARCH
+
+FROM dyne/devuan-stage1-${ARCH}:${RELEASE}
+
+RUN ["/debootstrap/debootstrap", "--second-stage"]
+
